@@ -1,4 +1,4 @@
-# Cats vs Dogs MLOps — Assignment 02
+# Cats vs Dogs MLOps
 
 End-to-end MLOps project for binary image classification (Cats vs Dogs) using a custom CNN. Includes data download/preprocessing, DVC pipeline stages, MLflow experiment tracking, FastAPI serving, Docker, Minikube deployment, Prometheus/Grafana monitoring, and GitHub Actions CI/CD.
 
