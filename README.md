@@ -167,15 +167,3 @@ CD (`.github/workflows/cd.yml`) pulls the GHCR image and brings up Compose after
 ## Model
 
 Custom **SimpleCNN** (4 conv blocks, 3→32→64→128→256 channels, FC head). Trained with Adam + cross-entropy; best checkpoint by validation accuracy saved to `models/champion_cnn.pt`.
-
-## Submission
-
-1. Zip source + configs + trained model (`models/champion_cnn.pt`)
-2. Screen recording (< 5 min)
-
-```bash
-./scripts/make_submission_zip.sh
-# prints an allowlist manifest before creating the zip
-```
-
-The zip includes only what the brief asks for: source (`src/`, `scripts/`, `tests/`), configs (`dvc.yaml`, `.dvc/config`, Docker/K8s/monitoring, CI/CD workflows), pinned requirements, and `models/champion_cnn.pt`. It does **not** include git history, ignore files, empty `.gitkeep` placeholders, datasets, or `mlruns/`.
