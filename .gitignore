@@ -1,0 +1,43 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.matplotlib/
+.env
+.DS_Store
+
+# Data (versioned with DVC; keep placeholders)
+data/raw/**
+!data/raw/.gitkeep
+data/processed/**
+!data/processed/.gitkeep
+!data/processed/splits.json
+
+# Model artifacts
+models/**
+!models/.gitkeep
+artifacts/**
+!artifacts/.gitkeep
+mlruns/
+
+# Local tooling
+_local/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.idea/
+.vscode/
+
+# Local logs and submission bundles
+logs/
+*.zip
+
+# DVC cache (local)
+.dvc/cache/
+/tmp/
+*.pt.tmp

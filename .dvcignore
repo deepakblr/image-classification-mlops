@@ -1,0 +1,4 @@
+# Add patterns of files dvc should ignore, which matches existing .gitignore by default.
+# Useful when adding large datasets with `dvc add`.
+/data/raw/_extract
+*.DS_Store

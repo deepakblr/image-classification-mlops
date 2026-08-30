@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff==0.8.1
+      - run: ruff check src/ tests/
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt && pip install -e .
+      - run: pytest tests/ -v
+
+  train-smoke:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt && pip install -e .
+      - run: python -m src.train --smoke
+      - uses: actions/upload-artifact@v4
+        with:
+          name: champion-model
+          path: |
+            models/champion_cnn.pt
+            artifacts/
+            mlruns/
+
+  docker-build-push:
+    runs-on: ubuntu-latest
+    needs: train-smoke
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt && pip install -e .
+      - run: python -m src.train --smoke
+      - name: Set image name
+        id: meta
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "image=ghcr.io/${OWNER}/cats-dogs-api" >> "$GITHUB_OUTPUT"
+          echo "tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        run: docker build -f docker/Dockerfile -t cats-dogs-api:ci .
+
+      - name: Container smoke test
+        run: |
+          docker run -d --name cats-dogs-ci -p 8000:8000 cats-dogs-api:ci
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:8000/health; then break; fi
+            sleep 1
+          done
+          chmod +x scripts/smoke_test.sh
+          python scripts/smoke_test.py http://127.0.0.1:8000
+          docker rm -f cats-dogs-ci
+
+      - name: Login to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push
+        if: github.event_name == 'push'
+        run: |
+          docker tag cats-dogs-api:ci "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}"
+          docker tag cats-dogs-api:ci "${{ steps.meta.outputs.image }}:latest"
+          docker push "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}"
+          docker push "${{ steps.meta.outputs.image }}:latest"

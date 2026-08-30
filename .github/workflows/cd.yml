@@ -1,0 +1,85 @@
+name: CD
+
+# Runs after CI succeeds on main/master.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       contains(fromJSON('["main","master"]'), github.event.workflow_run.head_branch))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    env:
+      OWNER: ${{ github.repository_owner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Deploy the commit that CI built (not necessarily workflow file tip)
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Resolve image reference
+        id: meta
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
+          echo "image=ghcr.io/${OWNER}/cats-dogs-api" >> "$GITHUB_OUTPUT"
+          echo "tag=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "Will deploy ${OWNER}/cats-dogs-api:${SHA}"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull image from registry
+        run: |
+          IMAGE="${{ steps.meta.outputs.image }}"
+          TAG="${{ steps.meta.outputs.tag }}"
+          docker pull "${IMAGE}:${TAG}"
+          docker pull "${IMAGE}:latest"
+          # Compose stack uses local name cats-dogs-api:latest
+          docker tag "${IMAGE}:${TAG}" cats-dogs-api:latest
+          docker image ls | grep -E 'cats-dogs-api|ghcr.io'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Prepare labeled samples for post-deploy tracking
+        run: |
+          pip install -r requirements.txt
+          pip install -e .
+          # Synthetic splits for track_performance; image comes from registry
+          python -m src.train --smoke
+
+      - name: Deploy with Docker Compose
+        run: |
+          export API_IMAGE=cats-dogs-api:latest
+          docker compose -f docker/docker-compose.yml up -d --no-build
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:8000/health; then break; fi
+            sleep 1
+          done
+
+      - name: Post-deploy smoke tests
+        run: |
+          python scripts/smoke_test.py http://127.0.0.1:8000
+
+      - name: Post-deploy performance sample
+        run: python scripts/track_performance.py --base-url http://127.0.0.1:8000 --n 10
+
+      - name: Upload tracking report
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-deploy-tracking
+          path: artifacts/post_deploy_tracking.json

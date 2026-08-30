@@ -1,0 +1,33 @@
+stages:
+  - prepare
+  - train
+
+prepare:
+  cmd: python scripts/prepare_data.py
+  deps:
+    - scripts/prepare_data.py
+    - src/data/preprocess.py
+    - data/raw/PetImages
+  outs:
+    - data/processed/train
+    - data/processed/val
+    - data/processed/test
+    - data/processed/splits.json
+
+train:
+  cmd: python -m src.train
+  deps:
+    - src/train.py
+    - src/models/cnn.py
+    - data/processed/splits.json
+    - data/processed/train
+    - data/processed/val
+    - data/processed/test
+  outs:
+    - models/champion_cnn.pt
+    - artifacts/confusion_matrix.png
+    - artifacts/loss_curves.png
+    - artifacts/metrics.json
+  metrics:
+    - artifacts/metrics.json:
+        cache: false

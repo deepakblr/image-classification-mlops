@@ -1,0 +1,19 @@
+.venv
+.git
+.github
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.matplotlib
+mlruns
+data/raw
+data/processed
+notebooks
+docs
+_local
+.dvc/cache
+__pycache__
+*.pyc
+.DS_Store
+# Keep README.md available for package install metadata
+!README.md
