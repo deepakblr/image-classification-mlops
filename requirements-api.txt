@@ -1,6 +1,5 @@
-# Inference-only deps for the Docker image (lighter / faster than full requirements.txt)
-torch==2.2.2
-torchvision==0.17.2
+# Inference-only deps for the Docker image.
+# PyTorch CPU wheels are installed separately in docker/Dockerfile (avoids CUDA deps on CI).
 Pillow==10.4.0
 numpy==1.26.4
 fastapi==0.115.5

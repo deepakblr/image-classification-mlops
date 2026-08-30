@@ -13,6 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements-api.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir torch==2.2.2 torchvision==0.17.2 \
+      --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir -r requirements-api.txt
 
 COPY src/ ./src/
