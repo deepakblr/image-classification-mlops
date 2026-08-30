@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import platform
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -33,6 +34,18 @@ def _device() -> torch.device:
     if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
         return torch.device("mps")
     return torch.device("cpu")
+
+
+def _runtime_params(device: torch.device) -> dict:
+    params = {
+        "device": str(device),
+        "python_version": platform.python_version(),
+        "platform": platform.platform(),
+        "torch_version": torch.__version__,
+    }
+    if device.type == "cuda" and torch.cuda.is_available():
+        params["gpu_name"] = torch.cuda.get_device_name(0)
+    return params
 
 
 def _run_epoch(model, loader, criterion, optimizer, device, train: bool):
@@ -171,6 +184,7 @@ def train(
                 "train_size": len(splits["train"]),
                 "val_size": len(splits["val"]),
                 "test_size": len(splits["test"]),
+                **_runtime_params(device),
             }
         )
 
